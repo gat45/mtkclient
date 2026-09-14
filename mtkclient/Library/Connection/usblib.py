@@ -132,14 +132,19 @@ class UsbClass(DeviceClass):
         if sys.platform.startswith('freebsd') or sys.platform.startswith('linux') or sys.platform.startswith('darwin'):
             self.backend = usb.backend.libusb1.get_backend(find_library=lambda x: "libusb-1.0.so")
         elif sys.platform.startswith('win32'):
-            if calcsize("P") * 8 == 64:
-                self.backend = usb.backend.libusb1.get_backend(find_library=lambda x: "libusb-1.0.dll")
-            else:
-                self.backend = usb.backend.libusb1.get_backend(find_library=lambda x: "libusb32-1.0.dll")
+            # Prefer the bundled libusb DLL shipped with mtkclient (mtkclient/Windows)
+            import os as _os
+            _bundled = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))), 'Windows',
+                                     'libusb-1.0.dll' if calcsize("P") * 8 == 64 else 'libusb32-1.0.dll')
+            _use = _bundled if _os.path.exists(_bundled) else _os.path.basename(_bundled)
+            self.backend = usb.backend.libusb1.get_backend(find_library=lambda x: _use)
         if self.backend is not None:
             try:
                 self.backend.lib.libusb_set_option.argtypes = [c_void_p, c_int]
-                self.backend.lib.libusb_set_option(self.backend.ctx, 1)
+                # NOTE: disabled USE_USBDK option - UsbDk enumeration is broken on
+                # this Windows build (26200); plain WinUSB/libusb0 enumeration works.
+                # self.backend.lib.libusb_set_option(self.backend.ctx, 1)
+                pass
             except Exception:
                 self.backend = None
 

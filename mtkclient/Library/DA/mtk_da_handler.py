@@ -111,7 +111,8 @@ class DaHandler(metaclass=LogBase):
     def connect(self, mtk, directory:str = None):
         if directory is None:
             directory = "."
-        mtk.port.cdc.connected = mtk.port.cdc.connect()
+        # NOTE: retry loop - wait for the device to be plugged in (BROM) instead of failing immediately
+        mtk.port.wait_for_device()
         if mtk.port.cdc.connected is None or not mtk.port.cdc.connected or mtk.serialportname is not None:
             mtk.preloader.init(directory=directory)
             if self.config.internal_flash and self.mtk.config.iot:
